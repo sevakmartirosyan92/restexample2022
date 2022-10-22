@@ -1,8 +1,8 @@
 package com.example.restexample.endpoint;
 
 import com.example.restexample.model.Book;
-import com.example.restexample.model.BookLanguage;
-import org.springframework.http.HttpStatus;
+import com.example.restexample.repository.BookRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -12,71 +12,47 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @RestController
+@RequiredArgsConstructor
 public class BookEndpoint {
 
-    List<Book> books = new ArrayList<>(List.of(
-            new Book(1, "girq 1", "poxos", 34.5, BookLanguage.EN),
-            new Book(2, "girq 2", "petros", 34.5, BookLanguage.ARM),
-            new Book(3, "girq 3", "martiros", 34.5, BookLanguage.RU)
-
-    ));
+    private final BookRepository bookRepository;
 
     @GetMapping("/books")
     public List<Book> getAllBooks() {
-        return books;
+        return bookRepository.findAll();
     }
 
     @GetMapping("/books/{id}")
     public ResponseEntity<Book> getBookById(@PathVariable("id") int id) {
-        for (Book book : books) {
-            if (book.getId() == id) {
-                return ResponseEntity.ok(book);
-            }
+        Optional<Book> byId = bookRepository.findById(id);
+        if (byId.isEmpty()) {
+            return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.notFound().build();
+        return ResponseEntity.ok(byId.get());
     }
 
     @PostMapping("/books")
     public ResponseEntity<?> createBook(@RequestBody Book book) {
-        for (Book bookFromDB : books) {
-            if (bookFromDB.getTitle().equals(book.getTitle())
-                    && bookFromDB.getAuthorName().equals(book.getAuthorName())) {
-                return ResponseEntity.status(HttpStatus.CONFLICT)
-                        .build();
-            }
-        }
-        books.add(book);
+        bookRepository.save(book);
         return ResponseEntity.noContent().build();
     }
 
     @PutMapping("/books")
     public ResponseEntity<Book> updateBook(@RequestBody Book book) {
-        if (book.getId() > 0) {
-            for (Book bookFromDB : books) {
-                if (bookFromDB.getId() == book.getId()) {
-                    bookFromDB.setLanguage(book.getLanguage());
-                    bookFromDB.setTitle(book.getTitle());
-                    bookFromDB.setPrice(book.getPrice());
-                    bookFromDB.setAuthorName(book.getAuthorName());
-                    return ResponseEntity.ok(bookFromDB);
-                }
-            }
+        if(book.getId() == 0) {
+            return ResponseEntity.badRequest().build();
         }
-        return ResponseEntity.notFound().build();
+        bookRepository.save(book);
+        return ResponseEntity.ok(book);
     }
 
     @DeleteMapping("/books/{id}")
     public ResponseEntity<?> deleteBookById(@PathVariable("id") int id) {
-        for (Book book : books) {
-            if (book.getId() == id) {
-                books.remove(book);
-                return ResponseEntity.noContent().build();
-            }
-        }
-        return ResponseEntity.notFound().build();
+        bookRepository.deleteById(id);
+        return ResponseEntity.noContent().build();
     }
 }
